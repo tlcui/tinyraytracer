@@ -9,4 +9,4 @@
 win10 + vs2019
 
 ## 结果展示
-
+![image](https://github.com/tlcui/tinyraytracer/blob/master/results.jpeg)
