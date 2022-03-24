@@ -11,6 +11,8 @@
 #include "camera.h"
 #include "material.h"
 #include <ctime>
+#include <tbb/parallel_for.h>
+
 
 template<typename T>
 Color<T> ray_color(const Ray<T>& r, const Hittable<T>& world, int depth) 
@@ -112,20 +114,27 @@ int main()
 
     for (int j = image_height - 1; j >= 0; --j) {
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-        for (int i = 0; i < image_width; ++i) {
-            Color<double> pixel_color(0, 0, 0);
-            for (int s = 0; s < samples_per_pixel; ++s) {
-                auto u = (i + random_generate<double>()) / (image_width - 1);
-                auto v = (j + random_generate<double>()) / (image_height - 1);
-                Ray<double> r = cam.get_ray(u, v);
-                pixel_color += ray_color(r, world, max_depth);
+
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, image_width), [&](const tbb::blocked_range<size_t>& r) 
+            {
+            for (int i = r.begin(); i != r.end(); ++i) 
+            {
+                Color<double> pixel_color(0, 0, 0);
+                for (int s = 0; s < samples_per_pixel; ++s) {
+                    auto u = (i + random_generate<double>()) / (image_width - 1);
+                    auto v = (j + random_generate<double>()) / (image_height - 1);
+                    Ray<double> r = cam.get_ray(u, v);
+                    pixel_color += ray_color(r, world, max_depth);
+                }
+                write_color(std::cout, pixel_color, samples_per_pixel);
             }
-            write_color(std::cout, pixel_color, samples_per_pixel);
-        }
+            });
     }
 
     auto end = clock();
     std::cerr << "\nDone.\n";
     std::cerr << "time consumption: " << static_cast<double>(end - start) / CLOCKS_PER_SEC << "s\n";
-    //2983.71s
+    
+    //single-thread 2983.71s
+    //multi-thread 430.159s
 }
